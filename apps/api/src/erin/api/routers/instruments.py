@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
+import json
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
@@ -10,7 +11,7 @@ from erin.api.models import (
     AssetClass, InstrumentBase, InstrumentCreate, InstrumentResponse, InstrumentSearch
 )
 
-router = APIRouter(prefix="/api/v1/instruments", tags=["instruments"])
+router = APIRouter(prefix="", tags=["instruments"])
 
 
 @router.get("", response_model=Dict[str, Any])
@@ -40,7 +41,16 @@ async def search_instruments(
         params.append(limit)
         
         cursor = conn.execute(query, params)
-        instruments = [dict(row) for row in cursor.fetchall()]
+        instruments = []
+        for row in cursor.fetchall():
+            inst = dict(row)
+            # Parse JSON metadata field
+            if inst.get("metadata") and isinstance(inst["metadata"], str):
+                try:
+                    inst["metadata"] = json.loads(inst["metadata"])
+                except:
+                    inst["metadata"] = {}
+            instruments.append(inst)
         
         # Get total count
         count_query = "SELECT COUNT(*) FROM instruments WHERE is_active = 1"

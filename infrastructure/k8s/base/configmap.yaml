@@ -1,0 +1,126 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: erin-config
+  namespace: erin-platform
+  labels:
+    app.kubernetes.io/name: erin-config
+    app.kubernetes.io/part-of: erin-platform
+data:
+  kafka-brokers: "kafka-0.kafka-headless.erin-data.svc.cluster.local:9092,kafka-1.kafka-headless.erin-data.svc.cluster.local:9092,kafka-2.kafka-headless.erin-data.svc.cluster.local:9092"
+  log-level: "INFO"
+  log-format: "json"
+  metrics-enabled: "true"
+  tracing-enabled: "true"
+  tracing-sample-rate: "0.1"
+  tracing-endpoint: "http://tempo.erin-monitoring.svc.cluster.local:4318/v1/traces"
+  cache-ttl-seconds: "3600"
+  rate-limit-requests: "1000"
+  rate-limit-window-seconds: "60"
+  health-check-interval-seconds: "30"
+  graceful-shutdown-timeout-seconds: "30"
+  market-data-providers: "yfinance,openbb,fred,alpha_vantage,sec_edgar"
+  default-timezone: "UTC"
+  max-request-size-mb: "10"
+  request-timeout-seconds: "30"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-rules
+  namespace: erin-monitoring
+data:
+  erin-alerts.yaml: |
+    groups:
+    - name: erin-platform-alerts
+      rules:
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m])) by (service)
+          /
+          sum(rate(http_requests_total[5m])) by (service)
+          > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate on {{ $labels.service }}"
+          description: "Error rate > 5% for 5 minutes"
+          runbook_url: "https://runbooks.erin.io/high-error-rate"
+
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service)) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency on {{ $labels.service }}"
+          description: "p99 latency > 1s for 5 minutes"
+          runbook_url: "https://runbooks.erin.io/high-latency"
+
+      - alert: HighMemoryUsage
+        expr: |
+          (container_memory_usage_bytes / container_spec_memory_limit_bytes) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.pod }}"
+          description: "Memory usage > 85% for 10 minutes"
+          runbook_url: "https://runbooks.erin.io/high-memory"
+
+      - alert: HighCPUUsage
+        expr: |
+          (rate(container_cpu_usage_seconds_total[5m]) / container_spec_cpu_quota / container_spec_cpu_period) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on {{ $labels.pod }}"
+          description: "CPU usage > 85% for 10 minutes"
+          runbook_url: "https://runbooks.erin.io/high-cpu"
+
+      - alert: PodRestartLoop
+        expr: |
+          increase(kube_pod_container_status_restarts_total[15m]) > 5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Pod {{ $labels.pod }} restarting frequently"
+          description: "Pod restarted > 5 times in 15 minutes"
+          runbook_url: "https://runbooks.erin.io/pod-restart-loop"
+
+      - alert: KafkaConsumerLag
+        expr: |
+          kafka_consumergroup_lag{consumergroup="market-data-api"} > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Kafka consumer lag high for market-data-api"
+          description: "Consumer lag > 1000 for 5 minutes"
+          runbook_url: "https://runbooks.erin.io/kafka-consumer-lag"
+
+      - alert: DatabaseConnectionsHigh
+        expr: |
+          pg_stat_database_numbackends / pg_settings_max_connections > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Database connections > 80%"
+          description: "PostgreSQL connections > 80% of max"
+          runbook_url: "https://runbooks.erin.io/db-connections-high"
+
+      - alert: RedisMemoryHigh
+        expr: |
+          redis_memory_used_bytes / redis_memory_max_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis memory usage > 85%"
+          description: "Redis memory usage > 85% of max"
+          runbook_url: "https://runbooks.erin.io/redis-memory-high"

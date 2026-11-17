@@ -140,6 +140,7 @@ class Profiler:
                     }
                     for stat in top_stats[:10]
                 ]
+        },
 
         result = ProfileResult(
             profile_type=self.config.profile_type,
@@ -216,6 +217,7 @@ class MemoryProfiler(Profiler):
                 for stat in top_stats_count[:20]
             ]
 
+        },
         result = ProfileResult(
             profile_type=ProfileType.MEMORY,
             started_at=self._start_time,
@@ -277,6 +279,7 @@ class AsyncProfiler(Profiler):
                 for stats in self._task_stats.values()
             ]
 
+        }
         return super().stop()
 
 

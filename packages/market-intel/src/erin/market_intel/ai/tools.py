@@ -899,3 +899,20 @@ def create_tool_executor(registry: ToolRegistry = None) -> ToolExecutor:
 
 def create_approval_manager(executor: ToolExecutor) -> ApprovalManager:
     return ApprovalManager(executor)
+
+# Alias for backward compatibility
+get_tool_registry = create_tool_registry
+
+__all__ = [
+    'ToolSensitivity',
+    'SandboxProfile',
+    'ToolDefinition',
+    'ToolCall',
+    'ToolRegistry',
+    'ToolExecutor',
+    'ApprovalManager',
+    'create_tool_registry',
+    'get_tool_registry',
+    'create_tool_executor',
+    'create_approval_manager',
+]

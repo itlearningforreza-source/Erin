@@ -208,8 +208,6 @@ class MetricsCollector:
             errors_by_type=error_types,
             throughput_over_time=throughput_over_time,
             latency_over_time=latency_over_time,
-            errors_by_type=error_types,
-            duration_seconds=duration,
         )
 
 
@@ -401,7 +399,6 @@ class MetricsCollector:
             throughput_over_time=[],
             latency_over_time=[],
             errors_by_type={},
-            duration_seconds=duration,
         )
 
 
@@ -462,3 +459,18 @@ def create_load_test_config(target_url, target_rps=100, duration_seconds=60, mod
 
 def create_load_test_runner(config):
     return LoadTestRunner(config)
+
+# Alias for backward compatibility
+LoadTester = LoadTestRunner
+
+__all__ = [
+    'LoadTestMode',
+    'LoadTestStatus',
+    'LoadTestConfig',
+    'LoadTestResult',
+    'LoadTestRunner',
+    'LoadTester',
+    'LoadGenerator',
+    'MetricsCollector',
+    'create_load_test_config',
+]

@@ -1,0 +1,178 @@
+global:
+  kafka:
+    auth:
+      enabled: false
+
+replicas: 3
+
+resources:
+  requests:
+    cpu: "1000m"
+    memory: "2Gi"
+  limits:
+    cpu: "4000m"
+    memory: "8Gi"
+
+persistence:
+  enabled: true
+  size: "100Gi"
+  storageClass: "gp3"
+
+heapOptions: "-Xmx6g -Xms6g"
+
+jvmPerformanceOpts: "-XX:MetaspaceSize=96m -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:G1HeapRegionSize=16M -XX:MinMetaspaceFreeRatio=50 -XX:MaxMetaspaceFreeRatio=80"
+
+config:
+  # Broker config
+  auto.create.topics.enable: "true"
+  delete.topic.enable: "true"
+  log.dirs: "/bitnami/kafka/data"
+  num.partitions: "12"
+  default.replication.factor: "3"
+  min.insync.replicas: "2"
+  log.retention.hours: "168"
+  log.retention.bytes: "10737418240"
+  log.segment.bytes: "1073741824"
+  log.segment.ms: "86400000"
+  log.cleanup.policy: "delete,compact"
+  min.cleanable.dirty.ratio: "0.5"
+  log.cleaner.min.compaction.lag.ms: "86400000"
+  log.cleaner.max.compaction.lag.ms: "604800000"
+  log.cleaner.min.cleanable.ratio: "0.5"
+  log.cleaner.threads: "2"
+  log.cleaner.io.max.bytes.per.second: "10485760"
+  log.cleaner.dedupe.buffer.size: "134217728"
+  log.index.size.max.bytes: "10485760"
+  log.index.interval.bytes: "4096"
+  flush.messages: "10000"
+  flush.ms: "1000"
+  num.network.threads: "8"
+  num.io.threads: "16"
+  socket.send.buffer.bytes: "102400"
+  socket.receive.buffer.bytes: "102400"
+  socket.request.max.bytes: "104857600"
+  num.replica.fetchers: "4"
+  replica.fetch.max.bytes: "1048576"
+  replica.fetch.wait.max.ms: "500"
+  replica.fetch.min.bytes: "1"
+  replica.fetch.max.wait.ms: "500"
+  controlled.shutdown.enable: "true"
+  controlled.shutdown.max.retries: "3"
+  controlled.shutdown.retry.backoff.ms: "5000"
+  unclean.leader.election.enable: "false"
+  auto.leader.rebalance.enable: "true"
+  leader.imbalance.check.interval.seconds: "300"
+  leader.imbalance.per.broker.percentage: "10"
+
+  # Security
+  listeners: "PLAINTEXT://:9092"
+  advertised.listeners: "PLAINTEXT://${POD_NAME}.${SERVICE_NAME}.${NAMESPACE}.svc.cluster.local:9092"
+  security.inter.broker.protocol: "PLAINTEXT"
+
+  # Zookeeper
+  zookeeper.connect: "zookeeper.erin-data.svc.cluster.local:2181"
+
+  # Monitoring
+  metric.reporters: "io.prometheus.jmx.JavaAgent"
+  prometheus.jmx.exporter.port: "7071"
+
+zookeeper:
+  enabled: true
+  replicaCount: 3
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+  persistence:
+    enabled: true
+    size: "10Gi"
+    storageClass: "gp3"
+  auth:
+    enabled: false
+  resources:
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+
+metrics:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: danielqsj/kafka_exporter
+    tag: "v1.7.0"
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "200m"
+      memory: "256Mi"
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    namespace: erin-monitoring
+    labels:
+      release: prometheus
+
+podSecurityContext:
+  enabled: true
+  fsGroup: 1001
+  runAsUser: 1001
+  runAsGroup: 1001
+  runAsNonRoot: true
+
+containerSecurityContext:
+  enabled: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+  readOnlyRootFilesystem: false
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "7071"
+  prometheus.io/path: "/metrics"
+
+metrics:
+  kafka:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      namespace: erin-monitoring
+      labels:
+        release: prometheus
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+topologySpreadConstraints:
+- maxSkew: 1
+  topologyKey: topology.kubernetes.io/zone
+  whenUnsatisfiable: ScheduleAnyway
+  labelSelector:
+    matchLabels:
+      app.kubernetes.io/name: kafka
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app.kubernetes.io/name
+            operator: In
+            values:
+            - kafka
+        topologyKey: kubernetes.io/hostname

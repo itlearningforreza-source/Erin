@@ -11,7 +11,7 @@ from erin.api.models import (
 )
 from fastapi import WebSocket
 
-router = APIRouter(prefix="/api/v1/quotes", tags=["market-data"])
+router = APIRouter(prefix="", tags=["market-data"])
 
 @router.get("", response_model=dict)
 async def get_quotes(
@@ -35,7 +35,7 @@ async def get_quotes(
     # In a real implementation, this would query the real-time quote cache
     # For now, return mock data structure
     quotes = {}
-    for symbol in symbols_list:
+    for symbol in symbol_list:
         if symbol in instruments:
             quotes[symbol] = {
                 "symbol": symbol,

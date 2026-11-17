@@ -1,0 +1,53 @@
+global:
+  leaderElection:
+    namespace: cert-manager
+
+installCRDs: true
+
+prometheus:
+  enabled: true
+  servicemonitor:
+    enabled: true
+    interval: 30s
+    namespace: erin-monitoring
+    labels:
+      release: prometheus
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+cainjector:
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "256Mi"
+
+webhook:
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "256Mi"
+
+extraArgs:
+  - "--dns01-recursive-nameservers=1.1.1.1:53,8.8.8.8:53"
+  - "--dns01-recursive-nameservers-only"
+
+ingressShim:
+  defaultIssuerName: letsencrypt-prod
+  defaultIssuerKind: ClusterIssuer
+  defaultIssuerGroup: cert-manager.io
+
+ingressClass:
+  enabled: true
+  class: nginx

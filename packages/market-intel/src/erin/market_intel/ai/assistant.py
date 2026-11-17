@@ -302,3 +302,17 @@ def create_ai_assistant(
 
 def create_assistant_session(assistant: AIAssistant, user_id: str) -> AssistantSession:
     return AssistantSession(assistant, user_id)
+
+# Alias for backward compatibility
+ResearchAssistant = AIAssistant
+
+__all__ = [
+    'AIAssistant',
+    'ResearchAssistant',
+    'AssistantMode',
+    'ConversationMessage',
+    'Conversation',
+    'AssistantSession',
+    'create_ai_assistant',
+    'create_assistant_session',
+]

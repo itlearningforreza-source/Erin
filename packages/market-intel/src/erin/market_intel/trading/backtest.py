@@ -706,3 +706,26 @@ def create_data_portal() -> DataPortal:
 
 def create_backtester(config: BacktestConfig, data_portal: DataPortal) -> EventDrivenBacktester:
     return EventDrivenBacktester(config, data_portal)
+
+# Alias for backward compatibility
+BacktestEngine = EventDrivenBacktester
+
+__all__ = [
+    'BacktestConfig',
+    'BacktestMode',
+    'DataFrequency',
+    'PortfolioState',
+    'Trade',
+    'BacktestResult',
+    'DataPortal',
+    'Strategy',
+    'Portfolio',
+    'ExecutionSimulator',
+    'EventDrivenBacktester',
+    'BacktestEngine',
+    'VectorizedBacktester',
+    'WalkForwardOptimizer',
+    'create_backtest_config',
+    'create_data_portal',
+    'create_backtester',
+]

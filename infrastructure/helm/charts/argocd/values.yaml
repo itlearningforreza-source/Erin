@@ -1,0 +1,298 @@
+global:
+  domain: argocd.erin.io
+
+configs:
+  params:
+    server.insecure: true
+  rbac:
+    policy.default: role:readonly
+    policy.csv: |
+      p, role:admin, applications, *, */*, allow
+      p, role:admin, clusters, *, *, allow
+      p, role:admin, projects, *, *, allow
+      p, role:admin, repositories, *, *, allow
+      g, argocd-admins, role:admin
+      g, platform-team, role:admin
+      g, dev-team, role:developer
+  cm:
+    url: https://argocd.erin.io
+    application.instanceLabelKey: argocd.argoproj.io/instance
+    resource.customizations: |
+      argoproj.io/Application:
+        health.lua: |
+          hs = {}
+          hs.status = "Healthy"
+          hs.message = ""
+          return hs
+    timeout.reconciliation: 180s
+    timeout.operation: 300s
+    application.resourceTrackingMethod: annotation
+    repository.credentials: |
+      - url: github.com/erin-org
+        username: git
+        password: $GITHUB_TOKEN
+    oidc.config: |
+      name: Google
+      issuer: https://accounts.google.com
+      clientID: $GOOGLE_CLIENT_ID
+      clientSecret: $GOOGLE_CLIENT_SECRET
+      requestedScopes: ["openid", "profile", "email"]
+      requestedIDTokenClaims: {"email": {"essential": true}}
+
+controller:
+  replicas: 2
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "2000m"
+      memory: "4Gi"
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      namespace: erin-monitoring
+      labels:
+        release: prometheus
+
+server:
+  replicas: 2
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      namespace: erin-monitoring
+      labels:
+        release: prometheus
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    hosts:
+      - argocd.erin.io
+    tls:
+      - secretName: argocd-tls
+        hosts:
+          - argocd.erin.io
+
+repoServer:
+  replicas: 2
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      namespace: erin-monitoring
+      labels:
+        release: prometheus
+  volumes:
+    - name: git-creds
+      secret:
+        secretName: git-creds
+  volumeMounts:
+    - name: git-creds
+      mountPath: /home/argocd/.git-credentials
+      subPath: .git-credentials
+      readOnly: true
+
+applicationSet:
+  enabled: true
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+dex:
+  enabled: true
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+redis:
+  enabled: true
+  architecture: replication
+  master:
+    persistence:
+      size: 1Gi
+  replica:
+    persistence:
+      size: 1Gi
+
+redis-ha:
+  enabled: false
+
+redis-cluster:
+  enabled: false
+
+notifications:
+  enabled: true
+  controllers:
+    notifications:
+      enabled: true
+    argocd:
+      enabled: true
+
+configs:
+  secret:
+    argocdServerAdminPassword: ""
+    argocdServerAdminPasswordMtime: ""
+  cm:
+    admin.enabled: "true"
+
+applicationSet:
+  controllers:
+    applicationSet:
+      enabled: true
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "128Mi"
+        limits:
+          cpu: "500m"
+          memory: "512Mi"
+
+applications:
+  - name: erin-platform
+    project: default
+    source:
+      repoURL: https://github.com/erin-org/erin-platform
+      targetRevision: HEAD
+      path: infrastructure/k8s/overlays/production
+    destination:
+      server: https://kubernetes.default.svc
+      namespace: erin-platform
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+        allowEmpty: false
+      syncOptions:
+        - CreateNamespace=true
+        - PrunePropagationPolicy=foreground
+        - PruneLast=true
+      retry:
+        limit: 5
+        backoff:
+          duration: 5s
+          factor: 2
+          maxDuration: 3m
+    ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+
+  - name: erin-data
+    project: default
+    source:
+      repoURL: https://github.com/erin-org/erin-platform
+      targetRevision: HEAD
+      path: infrastructure/helm/charts/postgresql
+      helm:
+        valueFiles:
+          - values.yaml
+    destination:
+      server: https://kubernetes.default.svc
+      namespace: erin-data
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+
+  - name: erin-redis
+    project: default
+    source:
+      repoURL: https://github.com/erin-org/erin-platform
+      targetRevision: HEAD
+      path: infrastructure/helm/charts/redis
+      helm:
+        valueFiles:
+          - values.yaml
+    destination:
+      server: https://kubernetes.default.svc
+      namespace: erin-data
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+
+  - name: erin-kafka
+    project: default
+    source:
+      repoURL: https://github.com/erin-org/erin-platform
+      targetRevision: HEAD
+      path: infrastructure/helm/charts/kafka
+      helm:
+        valueFiles:
+          - values.yaml
+    destination:
+      server: https://kubernetes.default.svc
+      namespace: erin-data
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+
+  - name: erin-monitoring
+    project: default
+    source:
+      repoURL: https://github.com/erin-org/erin-platform
+      targetRevision: HEAD
+      path: infrastructure/helm/charts/monitoring
+      helm:
+        valueFiles:
+          - values.yaml
+    destination:
+      server: https://kubernetes.default.svc
+      namespace: erin-monitoring
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+
+  - name: erin-cert-manager
+    project: default
+    source:
+      repoURL: https://github.com/erin-org/erin-platform
+      targetRevision: HEAD
+      path: infrastructure/helm/charts/cert-manager
+      helm:
+        valueFiles:
+          - values.yaml
+    destination:
+      server: https://kubernetes.default.svc
+      namespace: cert-manager
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true

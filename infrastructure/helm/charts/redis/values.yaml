@@ -1,0 +1,173 @@
+global:
+  redis:
+    auth:
+      enabled: true
+      password: ""
+      existingSecret: "erin-secrets"
+      secretKeys:
+        redisPasswordKey: "redis-url"
+
+architecture: replication
+
+auth:
+  enabled: true
+  password: ""
+  existingSecret: "erin-secrets"
+  secretKeys:
+    adminPasswordKey: "redis-url"
+
+master:
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "2000m"
+      memory: "4Gi"
+  persistence:
+    enabled: true
+    size: "20Gi"
+    storageClass: "gp3"
+  replicas: 1
+  podSecurityContext:
+    enabled: true
+    fsGroup: 1001
+    runAsUser: 1001
+    runAsGroup: 1001
+    runAsNonRoot: true
+  containerSecurityContext:
+    enabled: true
+    runAsUser: 1001
+    runAsGroup: 1001
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+    readOnlyRootFilesystem: false
+
+replica:
+  replicaCount: 3
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+  persistence:
+    enabled: true
+    size: "20Gi"
+    storageClass: "gp3"
+  podSecurityContext:
+    enabled: true
+    fsGroup: 1001
+    runAsUser: 1001
+    runAsGroup: 1001
+    runAsNonRoot: true
+  containerSecurityContext:
+    enabled: true
+    runAsUser: 1001
+    runAsGroup: 1001
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+    readOnlyRootFilesystem: false
+
+sentinel:
+  enabled: false
+
+redis:
+  config:
+    maxmemory: "2gb"
+    maxmemory-policy: "allkeys-lru"
+    save: ""
+    appendonly: "yes"
+    appendfsync: "everysec"
+    timeout: "300"
+    tcp-keepalive: "60"
+    maxclients: "10000"
+    databases: "16"
+    slowlog-log-slower-than: "10000"
+    slowlog-max-len: "128"
+    latencymonitor-threshold: "100"
+    notify-keyspace-events: "Ex"
+    hash-max-ziplist-entries: "512"
+    hash-max-ziplist-value: "64"
+    list-max-ziplist-size: "-2"
+    list-compress-depth: "0"
+    set-max-intset-entries: "512"
+    zset-max-ziplist-entries: "128"
+    zset-max-ziplist-value: "64"
+    hll-sparse-max-bytes: "3000"
+    stream-node-max-bytes: "4096"
+    stream-node-max-entries: "100"
+
+metrics:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: oliver006/redis_exporter
+    tag: "v1.54.0"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "50Mi"
+    limits:
+      cpu: "100m"
+      memory: "100Mi"
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    namespace: erin-monitoring
+    labels:
+      release: prometheus
+
+service:
+  type: ClusterIP
+  ports:
+    redis: 6379
+
+serviceMonitor:
+  enabled: true
+  interval: 30s
+  namespace: erin-monitoring
+  labels:
+    release: prometheus
+
+podSecurityContext:
+  enabled: true
+  fsGroup: 1001
+  runAsUser: 1001
+  runAsGroup: 1001
+  runAsNonRoot: true
+
+containerSecurityContext:
+  enabled: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+  readOnlyRootFilesystem: false
+
+volumePermissions:
+  enabled: true
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9121"
+  prometheus.io/path: "/metrics"
+
+sysctlImage:
+  enabled: true
+  mountHostSys: true
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "50Mi"
+    limits:
+      cpu: "100m"
+      memory: "100Mi"

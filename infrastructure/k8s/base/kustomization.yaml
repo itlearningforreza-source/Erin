@@ -1,0 +1,36 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- namespace.yaml
+- network-policies.yaml
+- rbac.yaml
+- configmap.yaml
+- secrets.yaml
+- market-data-api.yaml
+- hpa-pdb.yaml
+
+commonLabels:
+  app.kubernetes.io/managed-by: argocd
+  app.kubernetes.io/instance: erin-platform
+
+commonAnnotations:
+  argocd.argoproj.io/sync-wave: "0"
+
+configMapGenerator:
+- name: erin-config
+  behavior: merge
+  files:
+  - erin-config.yaml=config/erin-config.yaml
+
+secretGenerator:
+- name: erin-secrets
+  behavior: merge
+  literals:
+  - database-url=postgresql://postgres:changeme@postgresql.erin-data.svc.cluster.local:5432/erin?sslmode=require
+  - redis-url=redis://:changeme@redis.erin-data.svc.cluster.local:6379/0
+  - jwt-secret-key=changeme-min-32-chars-long-secret
+  - encryption-key=changeme-32-byte-encryption-key-here
+
+patchesStrategicMerge:
+- patches/production-resources.yaml

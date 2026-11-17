@@ -1952,7 +1952,7 @@ class SecurityConfigValidator:
                         "severity": "MEDIUM",
                         "message": "Root filesystem not read-only",
                         "remediation": "Set readOnlyRootFilesystem: true"
-                    )
+                    })
                 if not sc.get("capabilities", {}).get("drop", []):
                     issues.append({
                         "path": f"{path}.spec.containers[{i}].securityContext.capabilities.drop",
@@ -2050,6 +2050,41 @@ def create_secure_defaults() -> SecureDefaults:
 
 def create_security_config_validator() -> SecurityConfigValidator:
     return SecurityConfigValidator()
+
+
+class SystemHardening:
+    """System hardening utilities for infrastructure."""
+    
+    def __init__(self, level: HardeningLevel = HardeningLevel.STANDARD):
+        self.level = level
+        self.engine = HardeningEngine(level)
+        self.validator = SecurityConfigValidator()
+    
+    def harden_container(self, container_config: Dict) -> Dict:
+        """Apply hardening to container configuration."""
+        return self.engine.harden_kubernetes_manifest(container_config)
+    
+    def harden_kubernetes(self, manifest: Dict) -> Dict:
+        """Apply hardening to Kubernetes manifests."""
+        return self.engine.harden_kubernetes_manifest(manifest)
+    
+    def validate_config(self, config: Dict) -> Dict:
+        """Validate configuration against hardening standards."""
+        return self.validator.validate_kubernetes(manifest=config)
+    
+    def get_recommendations(self, target: str = 'all') -> List[str]:
+        """Get hardening recommendations."""
+        return [
+            'Enable pod security standards',
+            'Use non-root containers',
+            'Implement network policies',
+            'Enable audit logging',
+            'Restrict capabilities',
+        ]
+
+
+def create_system_hardening(level: HardeningLevel = HardeningLevel.STANDARD) -> SystemHardening:
+    return SystemHardening(level)
 
 
 def create_security_incident_response() -> SecurityIncidentResponse:

@@ -220,6 +220,34 @@ class LifecycleManager:
         }
 
 
+def create_lifecycle_manager(app_name: str = "erin") -> LifecycleManager:
+    """Create a lifecycle manager instance."""
+    return LifecycleManager(app_name)
+
+
+def create_startup_sequence() -> StartupSequence:
+    """Create a startup sequence manager."""
+    return StartupSequence()
+
+
+def create_graceful_shutdown(timeout: float = 30.0, force_after: float = 60.0) -> GracefulShutdown:
+    """Create a graceful shutdown handler."""
+    return GracefulShutdown(timeout, force_after)
+
+
+__all__ = [
+    'ShutdownSignal',
+    'LifecyclePhase',
+    'LifecycleHook',
+    'LifecycleManager',
+    'StartupSequence',
+    'GracefulShutdown',
+    'create_lifecycle_manager',
+    'create_startup_sequence',
+    'create_graceful_shutdown',
+]
+
+
 class StartupSequence:
     """Manages the startup sequence with dependencies."""
     

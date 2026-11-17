@@ -536,3 +536,24 @@ def create_cache_config(
         backend=backend,
         backend_config=backend_config or {},
     )
+
+# Aliases for backward compatibility
+LRUCache = MemoryCacheBackend
+LFUCache = MemoryCacheBackend  # LFU strategy implemented in same class
+TTLCache = MemoryCacheBackend  # TTL strategy implemented in same class
+
+__all__ = [
+    'CacheStrategy',
+    'CacheBackendType',
+    'CacheConfig',
+    'CacheEntry',
+    'CacheBackend',
+    'MemoryCacheBackend',
+    'LRUCache',
+    'RedisCacheBackend',
+    'DiskCacheBackend',
+    'MultiLevelCache',
+    'CacheManager',
+    'create_cache_manager',
+    'create_cache_config',
+]

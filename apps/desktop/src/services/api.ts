@@ -118,19 +118,31 @@ class ApiClient {
     const params = new URLSearchParams();
     params.append('symbols', symbols.join(','));
     if (fields) params.append('fields', fields.join(','));
-    const response = await this.client.get(`/api/v1/market-data/quotes?${params.toString()}`);
+    const response = await this.client.get(`/api/v1/quotes?${params.toString()}`);
     return response.data;
   }
 
-  async getQuoteHistory(symbol: string, start: string, end: string, interval: string, adjustment?: string) {
+  // Get quote history by FIGI (OpenFIGI identifier)
+  async getQuoteHistoryByFigi(figi: string, start: string, end: string, interval: string, adjustment?: string) {
     const params = new URLSearchParams({
       start,
       end,
       interval,
     });
     if (adjustment) params.append('adjustment', adjustment);
-    const response = await this.client.get(`/api/v1/market-data/quotes/${symbol}/history?${params.toString()}`);
+    const response = await this.client.get(`/api/v1/quotes/${figi}/history?${params.toString()}`);
     return response.data;
+  }
+
+  // Convenience method: Get quote history by symbol (searches for FIGI first)
+  async getQuoteHistoryBySymbol(symbol: string, start: string, end: string, interval: string, adjustment?: string) {
+    // First search for the instrument by symbol
+    const instruments = await this.searchInstruments(symbol, undefined, undefined, 1);
+    if (!instruments.items || instruments.items.length === 0) {
+      throw new Error(`No instrument found for symbol: ${symbol}`);
+    }
+    const figi = instruments.items[0].figi;
+    return this.getQuoteHistoryByFigi(figi, start, end, interval, adjustment);
   }
 
   // Instruments

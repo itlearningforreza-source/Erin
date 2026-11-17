@@ -1,0 +1,7 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: market-data-api
+  namespace: erin-platform
+spec:
+  replicas: 5

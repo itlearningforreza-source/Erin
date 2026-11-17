@@ -1,0 +1,145 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: erin-platform
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-from-gateway
+  namespace: erin-platform
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: market-data-api
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: erin-system
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: kong-gateway
+  ports:
+  - protocol: TCP
+    port: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-to-database
+  namespace: erin-platform
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: market-data-api
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: postgresql
+      namespaceSelector:
+        matchLabels:
+          name: erin-data
+    ports:
+    - protocol: TCP
+      port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-to-redis
+  namespace: erin-platform
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: market-data-api
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: redis
+      namespaceSelector:
+        matchLabels:
+          name: erin-data
+    ports:
+    - protocol: TCP
+      port: 6379
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-to-kafka
+  namespace: erin-platform
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: market-data-api
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: kafka
+      namespaceSelector:
+        matchLabels:
+          name: erin-data
+    ports:
+    - protocol: TCP
+      port: 9092
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: erin-platform
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scrape
+  namespace: erin-platform
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: market-data-api
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: erin-monitoring
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: prometheus
+    ports:
+    - protocol: TCP
+      port: 9090

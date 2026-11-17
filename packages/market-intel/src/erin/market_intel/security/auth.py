@@ -1048,3 +1048,28 @@ def create_role_manager(user_manager: UserManager) -> RoleManager:
 
 def create_access_control(role_manager: RoleManager) -> AccessControl:
     return AccessControl(role_manager)
+
+# Alias for backward compatibility
+AuthManager = UserManager
+
+__all__ = [
+    'UserStatus',
+    'Permission',
+    'DEFAULT_ROLES',
+    'User',
+    'Session',
+    'ApiKey',
+    'PasswordPolicy',
+    'MFAManager',
+    'SessionManager',
+    'UserManager',
+    'AuthManager',
+    'RoleManager',
+    'AccessControl',
+    'create_password_policy',
+    'create_mfa_manager',
+    'create_session_manager',
+    'create_user_manager',
+    'create_role_manager',
+    'create_access_control',
+]

@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: erin-platform
+
+resources:
+- ../../base
+
+patchesStrategicMerge:
+- patches/staging-replicas.yaml
+- patches/staging-resources.yaml
+
+images:
+- name: erin/market-data-api
+  newTag: "latest"
+
+configMapGenerator:
+- name: erin-config
+  behavior: merge
+  literals:
+  - environment=staging
+  - log-level=DEBUG
+  - metrics-enabled=true
+  - tracing-enabled=true
+
+replicas:
+- name: market-data-api
+  count: 2
+
+commonAnnotations:
+  argocd.argoproj.io/sync-wave: "10"

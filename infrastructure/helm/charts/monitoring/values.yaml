@@ -1,0 +1,365 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+prometheus:
+  enabled: true
+  prometheus:
+    enabled: true
+    retention: 30d
+    retentionSize: 50GB
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          resources:
+            requests:
+              storage: 100Gi
+    resources:
+      requests:
+        cpu: 2000m
+        memory: 4Gi
+      limits:
+        cpu: 4000m
+        memory: 8Gi
+    service:
+      type: ClusterIP
+      port: 9090
+    serviceMonitor:
+      enabled: true
+    podMonitors:
+      enabled: true
+    ruleSelector:
+      matchLabels:
+        release: prometheus
+    serviceMonitorSelector:
+      matchLabels:
+        release: prometheus
+    podMonitorSelector:
+      matchLabels:
+        release: prometheus
+    ruleNamespaceSelector: {}
+    serviceMonitorNamespaceSelector: {}
+    podMonitorNamespaceSelector: {}
+    extraArgs:
+      - "--storage.tsdb.retention.time=30d"
+      - "--storage.tsdb.retention.size=50GB"
+      - "--web.enable-lifecycle"
+      - "--web.enable-admin-api"
+      - "--query.max-concurrency=20"
+      - "--query.max-samples=50000000"
+    remoteWrite:
+      - url: "https://prometheus-long-term.erin.io/api/v1/write"
+        queueConfig:
+          capacity: 10000
+          maxSamplesPerSend: 10000
+          maxShards: 200
+          batchSendDeadline: 5s
+  alertmanager:
+    enabled: true
+    retention: 120h
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          resources:
+            requests:
+              storage: 10Gi
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "256Mi"
+      limits:
+        cpu: "500m"
+        memory: "1Gi"
+    config:
+      global:
+        resolve_timeout: 5m
+      route:
+        group_by: ['alertname', 'severity']
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 4h
+        receiver: 'default'
+        routes:
+        - match:
+            severity: critical
+          receiver: 'critical'
+          continue: true
+        - match:
+            severity: warning
+          receiver: 'warning'
+          group_wait: 30s
+          group_interval: 5m
+      receivers:
+      - name: 'default'
+        email_configs:
+        - to: 'alerts@erin.io'
+          send_resolved: true
+        slack_configs:
+        - api_url: ''
+          channel: '#alerts'
+          send_resolved: true
+      - name: 'critical'
+        email_configs:
+        - to: 'critical@erin.io'
+          send_resolved: true
+        slack_configs:
+        - api_url: ''
+          channel: '#critical-alerts'
+          send_resolved: true
+        pagerduty_configs:
+        - service_key: ''
+          severity: critical
+      - name: 'warning'
+        email_configs:
+        - to: 'warning@erin.io'
+          send_resolved: true
+        slack_configs:
+        - api_url: ''
+          channel: '#warning-alerts'
+          send_resolved: true
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "256Mi"
+      limits:
+        cpu: "500m"
+        memory: "1Gi"
+
+grafana:
+  enabled: true
+  adminPassword: ""
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClassName: gp3
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://prometheus-server.erin-monitoring.svc.cluster.local:9090
+        access: proxy
+        isDefault: true
+        editable: false
+      - name: Loki
+        type: loki
+        url: http://loki.erin-monitoring.svc.cluster.local:3100
+        access: proxy
+        editable: false
+      - name: Tempo
+        type: tempo
+        url: http://tempo.erin-monitoring.svc.cluster.local:3200
+        access: proxy
+        editable: false
+  dashboards:
+    default:
+      erin-overview:
+        gnetId: 1
+        revision: 1
+        datasource: Prometheus
+    providers:
+      dashboardproviders.yaml:
+        apiVersion: 1
+        providers:
+        - name: 'erin'
+          orgId: 1
+          folder: 'ERIN'
+          type: file
+          disableDeletion: false
+          updateIntervalSeconds: 30
+          allowUiUpdates: true
+          options:
+            path: /var/lib/grafana/dashboards/erin
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      searchNamespace: ALL
+    datasources:
+      enabled: true
+      label: grafana_datasource
+      searchNamespace: ALL
+
+loki:
+  enabled: true
+  loki:
+    enabled: true
+    auth_enabled: false
+    replication_factor: 3
+    resources:
+      requests:
+        cpu: "1000m"
+        memory: "2Gi"
+      limits:
+        cpu: "4000m"
+        memory: "8Gi"
+    persistence:
+      enabled: true
+      size: 100Gi
+      storageClassName: gp3
+    schemaConfig:
+      configs:
+      - from: "2024-01-01"
+        store: boltdb-shipper
+        object_store: s3
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+    limits_config:
+      ingestion_rate_mb: 50
+      ingestion_burst_size_mb: 100
+      per_stream_rate_limit_mb: 10
+      per_stream_rate_limit_burst_mb: 20
+      max_global_streams_per_user: 10000
+      max_entries_limit_per_query: 5000
+      max_line_size: 256000
+      retention_period: 720h
+    chunk_store_config:
+      max_look_back_period: 720h
+    table_manager:
+      retention_deletes_enabled: true
+      retention_period: 720h
+    storage_config:
+      boltdb_shipper:
+        active_index_directory: /data/loki/boltdb-shipper-active
+        cache_location: /data/loki/boltdb-shipper-cache
+        cache_ttl: 24h
+        shared_store: s3
+      s3:
+        endpoint: s3.amazonaws.com
+        region: us-east-1
+        bucket: erin-loki-chunks
+        access_key_id: ""
+        secret_access_key: ""
+    memberlist:
+      join_members:
+        - loki-memberlist.erin-monitoring.svc.cluster.local
+  promtail:
+    enabled: true
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+    config:
+      clients:
+      - url: http://loki.erin-monitoring.svc.cluster.local:3100/loki/api/v1/push
+      scrape_configs:
+      - job_name: kubernetes-pods
+        kubernetes_sd_configs:
+        - role: pod
+        relabel_configs:
+        - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+          action: keep
+          regex: true
+        - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+          action: replace
+          target_label: __metrics_path__
+          regex: (.+)
+        - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+          action: replace
+          regex: ([^:]+)(?::\d+)?
+          target_label: __address__
+        - source_labels: [__meta_kubernetes_namespace]
+          action: replace
+          target_label: kubernetes_namespace
+        - source_labels: [__meta_kubernetes_pod_name]
+          action: replace
+          target_label: kubernetes_pod_name
+      - job_name: kubernetes-containers
+        kubernetes_sd_configs:
+        - role: pod
+        relabel_configs:
+        - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+          action: keep
+          regex: true
+        - source_labels: [__meta_kubernetes_pod_container_name]
+          action: replace
+          target_label: container
+
+tempo:
+  enabled: true
+  tempo:
+    enabled: true
+    metricsGenerator:
+      enabled: true
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+      limits:
+        cpu: "2000m"
+        memory: "4Gi"
+    persistence:
+      enabled: true
+      size: 50Gi
+      storageClassName: gp3
+    storage:
+      trace:
+        backend: s3
+        s3:
+          endpoint: s3.amazonaws.com
+          region: us-east-1
+          bucket: erin-tempo-traces
+          access_key_id: ""
+          secret_access_key: ""
+    storageClass: gp3
+    limits:
+      max_bytes_per_trace: 1000000
+      max_search_bytes_per_trace: 1000000
+    distributors:
+      resources:
+        requests:
+          cpu: "250m"
+          memory: "512Mi"
+        limits:
+          cpu: "1000m"
+          memory: "2Gi"
+    queriers:
+      resources:
+        requests:
+          cpu: "500m"
+          memory: "1Gi"
+        limits:
+          cpu: "2000m"
+          memory: "4Gi"
+    queryFrontend:
+      resources:
+        requests:
+          cpu: "250m"
+          memory: "512Mi"
+        limits:
+          cpu: "1000m"
+          memory: "2Gi"
+    compactors:
+      resources:
+        requests:
+          cpu: "250m"
+          memory: "512Mi"
+        limits:
+          cpu: "1000m"
+          memory: "2Gi"
+    metricsGenerator:
+      resources:
+        requests:
+          cpu: "250m"
+          memory: "512Mi"
+        limits:
+          cpu: "1000m"
+          memory: "2Gi"
+
+thanos:
+  enabled: false

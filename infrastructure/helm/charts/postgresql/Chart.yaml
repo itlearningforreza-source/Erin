@@ -1,0 +1,13 @@
+apiVersion: v2
+name: postgresql
+description: PostgreSQL database for ERIN platform
+type: application
+version: 1.0.0
+appVersion: "15.5"
+keywords:
+  - postgresql
+  - database
+  - sql
+maintainers:
+  - name: ERIN Team
+    email: platform@erin.io

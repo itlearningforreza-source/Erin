@@ -434,6 +434,18 @@ class MetricsClient:
             await self._session.close()
 
 
+# Aliases for backward compatibility
+MetricsCollector = MetricCollector
+
+def create_metrics_collector() -> MetricCollector:
+    return MetricCollector()
+
+def create_metrics_server(collector: MetricCollector, host: str = "0.0.0.0", port: int = 9090) -> MetricsServer:
+    return MetricsServer(collector)
+
+def create_metrics_client(server_url: str = "http://localhost:9090") -> MetricsClient:
+    return MetricsClient(server_url)
+
 # Built-in collectors
 class SystemMetricsCollector:
     """Collects system-level metrics."""

@@ -484,3 +484,21 @@ def create_order_manager() -> OrderManager:
 
 def create_smart_router() -> SmartOrderRouter:
     return SmartOrderRouter()
+
+# Alias for backward compatibility
+OrderManagementSystem = OrderManager
+
+__all__ = [
+    'Order',
+    'OrderType',
+    'OrderSide',
+    'TimeInForce',
+    'OrderStatus',
+    'ExecutionType',
+    'ExecutionReport',
+    'OrderManager',
+    'OrderManagementSystem',
+    'SmartOrderRouter',
+    'create_order_manager',
+    'create_smart_router',
+]
